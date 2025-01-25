@@ -1,101 +1,120 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { ProblemDisplay } from '@/components/ProblemDisplay';
+import { PseudocodeEditor } from '@/components/PseudocodeEditor';
+import { AnalysisFeedback } from '@/components/AnalysisFeedback';
+import { WalkthroughInput } from '@/components/WalkthroughInput';
+import { SessionProgress } from '@/components/SessionProgress';
+import { api } from '@/lib/api';
+import { PracticeSession } from '@/types';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [session, setSession] = useState<PracticeSession | null>(null);
+  const [pseudocode, setPseudocode] = useState('');
+  const [walkthrough, setWalkthrough] = useState('');
+  const [analysis, setAnalysis] = useState('');
+  const [verification, setVerification] = useState('');
+  const [iterations, setIterations] = useState(0);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  useEffect(() => {
+    startNewSession();
+  }, []);
+
+  const startNewSession = async () => {
+    try {
+      const sessionData = await api.startSession(3);
+      setSession(sessionData);
+      resetState();
+    } catch (error) {
+      console.error('Error starting session:', error);
+    }
+  };
+
+  const resetState = () => {
+    setPseudocode('');
+    setWalkthrough('');
+    setAnalysis('');
+    setVerification('');
+    setIterations(0);
+    setShowWalkthrough(false);
+  };
+
+  const handleSubmitPseudocode = async () => {
+    if (!session) return;
+    try {
+      const result = await api.submitPseudocode(session.session_id, pseudocode);
+      setAnalysis(result.analysis);
+      setIterations(result.iterations);
+
+      if (result.analysis.includes('solid') || result.analysis.includes('correct')) {
+        setShowWalkthrough(true);
+      }
+    } catch (error) {
+      console.error('Error submitting pseudocode:', error);
+    }
+  };
+
+  const handleSubmitWalkthrough = async () => {
+    if (!session) return;
+    try {
+      const result = await api.submitWalkthrough(session.session_id, walkthrough);
+      setVerification(result.verification);
+
+      if (result.next_problem) {
+        setTimeout(() => {
+          setSession(prev => ({
+            ...prev!,
+            current_problem: result.next_problem
+          }));
+          resetState();
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error submitting walkthrough:', error);
+    }
+  };
+
+  if (!session) return <div>Loading...</div>;
+
+  return (
+    <main className="max-w-4xl mx-auto p-6 space-y-6">
+      <SessionProgress
+        completedProblems={(session.current_problem?.id ?? 1) - 1}
+        totalProblems={session.total_problems}
+      />
+
+      <ProblemDisplay problem={session.current_problem} />
+
+      <PseudocodeEditor
+        value={pseudocode}
+        onChange={setPseudocode}
+      />
+
+      <button
+        className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+        onClick={handleSubmitPseudocode}
+        disabled={showWalkthrough}
+      >
+        Submit Pseudocode
+      </button>
+
+      {analysis && (
+        <AnalysisFeedback
+          analysis={analysis}
+          iterations={iterations}
+        />
+      )}
+
+      {showWalkthrough && (
+        <WalkthroughInput
+          value={walkthrough}
+          onChange={setWalkthrough}
+          onSubmit={handleSubmitWalkthrough}
+          verification={verification}
+        />
+      )}
+    </main>
   );
 }
