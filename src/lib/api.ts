@@ -1,9 +1,26 @@
 const API_BASE_URL = 'http://localhost:8000';
 
+
 export const api = {
-    startSession: async (problemCount: number) => {
+    startSession: async (problemCount: number, token: string) => {
+        console.log("startSession", problemCount, token);
         const response = await fetch(`${API_BASE_URL}/session/start?problem_count=${problemCount}`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+        });
+        return response.json();
+    },
+
+    getNextProblem: async (sessionId: string, token: string) => {
+        console.log("getNetProblem", sessionId);
+        const response = await fetch(`${API_BASE_URL}/session/${sessionId}/next-problem`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
         });
         return response.json();
     },
