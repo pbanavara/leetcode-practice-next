@@ -2,9 +2,24 @@
 import { useRouter } from 'next/navigation';
 import SignInModal from '@/components/auth/SigninModal';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 
 export default function HomeHero() {
+    const router = useRouter();
+    const { data: session, status } = useSession();
+
+    const handleStartSession = () => {
+        
+        if (status === 'authenticated') {
+            router.push('/session');
+        } else {
+            setShowSignIn(true);
+        }
+        
+        
+    };
+    
     
     const [showSignIn, setShowSignIn] = useState(false);
     return (
@@ -56,7 +71,7 @@ export default function HomeHero() {
                 </div>
                 <div className="mt-12 flex justify-center">
                 <button
-                    onClick={ () => setShowSignIn(true)}
+                    onClick={ () => handleStartSession() }
                     className="px-10 py-5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-lg font-semibold rounded-full hover:scale-105 transition-transform duration-200 shadow-lg flex items-center gap-2"
                 >
                     Try First Spaced Repetition Deck Free

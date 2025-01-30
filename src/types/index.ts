@@ -16,3 +16,9 @@ export interface PracticeSession {
     current_problem: Problem;
     total_problems: number;
 }
+
+interface Message {
+    type: 'pseudocode' | 'analysis';
+    content: string;
+    timestamp: number;
+}

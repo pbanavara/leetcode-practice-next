@@ -25,12 +25,18 @@ export const api = {
         return response.json();
     },
 
-    submitPseudocode: async (sessionId: string, pseudocode: string) => {
+    submitPseudocode: async (sessionId: string,
+        pseudocode: string,
+                                problemId: number,
+                                token: string) => {
         console.log("submitPseudocode", sessionId, pseudocode);
         const response = await fetch(`${API_BASE_URL}/session/${sessionId}/submit-pseudocode`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pseudocode })
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ "problem_id": problemId.toString(), "pseudocode": pseudocode })
         });
         if (!response.ok) {
             const errorData = await response.json();

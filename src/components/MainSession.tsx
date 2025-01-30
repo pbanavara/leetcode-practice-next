@@ -1,7 +1,7 @@
 'use client';
+import ReactMarkdown from 'react-markdown';
 
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ProblemDisplay } from '@/components/ProblemDisplay';
 import { PseudocodeEditor } from '@/components/PseudocodeEditor';
 import { AnalysisFeedback } from '@/components/AnalysisFeedback';
@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { PracticeSession } from '@/types';
 import { Problem } from '@/types';
 import { useSession } from 'next-auth/react';
+import { Message } from '@/types';
 
 export default function MainSession() {
     const { data: authSession, status } = useSession();
@@ -25,13 +26,22 @@ export default function MainSession() {
     const [currentProblemIndex, setCurrentProblemIndex] = useState(1);
     const [remainingProblems, setRemainingProblems] = useState(NO_OF_PROBLEMS);
     const [problem, setProblem] = useState<Problem>();
+    const [messages, setMessages] = useState<Message[]>([]);
     
-    
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
     useEffect(() => {
         if (status === 'authenticated') {
             startNewSession();
         }
     }, [status]);
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     const startNewSession = async () => {
         try {
@@ -71,11 +81,26 @@ export default function MainSession() {
 
   const handleSubmitPseudocode = async () => {
       if (!session) return;
-    try {
-      const result = await api.submitPseudocode(session.session_id, pseudocode);
-      setAnalysis(result.analysis);
-      setIterations(result.iterations);
-
+      setMessages(prev => [...prev, {
+          type: 'pseudocode',
+          content: pseudocode,
+          timestamp: Date.now()
+      }]);
+      try {
+        const problem_id =  session.current_problem.id;
+        const result = await api.submitPseudocode(session.session_id,
+            pseudocode,
+            problem_id,
+        authSession?.accessToken || '');
+        setAnalysis(result.analysis);
+        setIterations(result.iterations);
+          setMessages(prev => [...prev, {
+              type: 'analysis',
+              content: result.analysis,
+              timestamp: Date.now()
+          }]);
+          
+      
       if (result.analysis.includes('solid') || result.analysis.includes('correct')) {
         setShowWalkthrough(true);
       }
@@ -84,25 +109,6 @@ export default function MainSession() {
     }
   };
 
-  const handleSubmitWalkthrough = async () => {
-    if (!session) return;
-    try {
-      const result = await api.submitWalkthrough(session.session_id, walkthrough);
-      setVerification(result.verification);
-
-      if (result.next_problem) {
-        setTimeout(() => {
-          setSession(prev => ({
-            ...prev!,
-            current_problem: result.next_problem
-          }));
-          resetState();
-        }, 3000);
-      }
-    } catch (error) {
-      console.error('Error submitting walkthrough:', error);
-    }
-  };
 
   if (!session) return <div>Loading...</div>;
 
@@ -125,31 +131,54 @@ export default function MainSession() {
 
                 {/* Right Column - Chat Interface */}
                 <div className="w-7/12 p-6 flex flex-col">
-                   
-                    {/* Input Area - Fixed at Bottom */}
-                    <div className="flex-1"></div>
+                    {/* Chat Messages Area */}
+                    <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl mb-4 overflow-y-auto">
+                        <div className="p-6 space-y-4">
+                            {messages.map((message, index) => (
+                                <div
+                                    key={message.timestamp}
+                                    className={`p-4 rounded-lg ${message.type === 'pseudocode' ? 'bg-indigo-50' : 'bg-violet-50'
+                                        }`}
+                                >
+                                    <p className={`font-semibold ${message.type === 'pseudocode' ? 'text-indigo-700' : 'text-violet-700'
+                                        }`}>
+                                        {message.type === 'pseudocode' ? 'Your Pseudocode:' : 'Analysis:'}
+                                    </p>
+                                    {message.type === 'pseudocode' ? (
+                                        <pre className="mt-2 text-gray-700">{message.content}</pre>
+                                    ) : (
+                                        <ReactMarkdown className="mt-2 prose prose-indigo max-w-none">
+                                            {message.content}
+                                        </ReactMarkdown>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                     
+
+                    {/* Input Area - Fixed at Bottom */}
+                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
                         <PseudocodeEditor
                             value={pseudocode}
                             onChange={setPseudocode}
-                    />
-                    <div className="flex gap-4 mt-4">
-                        <button
-                            className="w-1/2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold rounded-full hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:hover:scale-100"
-                            onClick={handleSubmitPseudocode}
-                            disabled={showWalkthrough}
-                        >
-                            Submit Pseudocode
-                        </button>
-
-                        <button
-                            className="w-1/2 px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-full hover:scale-105 transition-all duration-200 shadow-lg"
-                            onClick={handleNextProblem}
-                        >
-                            Next Problem ({session?.total_problems - currentProblemIndex} left)
-                        </button>
+                        />
+                        <div className="flex gap-4 mt-4">
+                            <button
+                                className="w-1/2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold rounded-full hover:scale-105 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:hover:scale-100"
+                                onClick={handleSubmitPseudocode}
+                                disabled={showWalkthrough}
+                            >
+                                Submit Pseudocode
+                            </button>
+                            <button
+                                className="w-1/2 px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-full hover:scale-105 transition-all duration-200 shadow-lg"
+                                onClick={handleNextProblem}
+                            >
+                                Next Problem
+                            </button>
+                        </div>
                     </div>
-
                 </div>
             </div>
         </div>
