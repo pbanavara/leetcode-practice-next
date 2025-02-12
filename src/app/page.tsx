@@ -1,7 +1,6 @@
 'use client';
-import HomeHero from '@/components/HomeHero';
-import ProblemSetSelector from '@/components/ProblemSelector';
-import MainSession from '@/components/MainSession';
+import HomeHero from '@/app/components/HomeHero';
+import ProblemSetSelector from '@/app/components/ProblemSelector';
 import { SessionProvider } from 'next-auth/react';
 
 export default function Home() {

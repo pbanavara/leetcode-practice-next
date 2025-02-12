@@ -14,9 +14,9 @@ export const api = {
         return response.json();
     },
 
-    getNextProblem: async (sessionId: string, token: string) => {
+    getNextProblem: async (sessionId: string, token: string, problemId: string) => {
         console.log("getNetProblem", sessionId);
-        const response = await fetch(`${API_BASE_URL}/session/${sessionId}/next-problem`, {
+        const response = await fetch(`${API_BASE_URL}/session/${sessionId}/next-problem?current_problem_id=${problemId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`

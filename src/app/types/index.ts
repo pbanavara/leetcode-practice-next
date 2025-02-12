@@ -9,15 +9,18 @@ export interface Problem {
     frequency: number;
     related_topics: string[];
     asked_by_faang: boolean;
+    solved: boolean;
+    attempts: number;
 }
 
 export interface PracticeSession {
-    session_id: string;
-    current_problem: Problem;
-    total_problems: number;
+    sessionId: string;
+    currentProblem: Problem;
+    totalProblems: number;
+    deckName: string;
 }
 
-interface Message {
+export interface Message {
     type: 'pseudocode' | 'analysis';
     content: string;
     timestamp: number;

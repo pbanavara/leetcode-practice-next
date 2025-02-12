@@ -1,5 +1,5 @@
 import React from 'react';
-import { Problem } from '@/types';
+import { Problem } from '@/app/types';
 
 interface Props {
     problem: Problem;
@@ -43,16 +43,21 @@ export const ProblemDisplay = ({ problem }: Props) => {
             });
     }
     return (
-        <div className="bg-white rounded-lg shadow p-6 text-black">
+        <div className="bg-[#282828] rounded-lg p-6 text-[#CFD3DC]">
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold">{problem.title}</h2>
+                <h2 className="text-2xl font-bold text-white">{problem.title}</h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${difficultyColor}`}>
-                    {problem.difficulty }
+                    {problem.difficulty}
+                </span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${difficultyColor}`}>
+                    {problem.attempts} Attempts
                 </span>
             </div>
-            <div className="prose max-w-none">
-                {problem?.description && formatDescription(problem.description) }
+            <div className="prose prose-invert prose-code:bg-[#1E1E1E] prose-code:text-[#CFD3DC] prose-code:px-1 prose-code:rounded max-w-none">
+                {problem?.description && formatDescription(problem.description)}
             </div>
+           
         </div>
+
     );
 };

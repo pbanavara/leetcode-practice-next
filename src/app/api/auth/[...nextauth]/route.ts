@@ -1,6 +1,19 @@
 import NextAuth from 'next-auth'
 import { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google'
+import { Account, User } from 'next-auth'
+interface CustomToken extends JWT {
+    idTokenExpiresAt?: number;
+}
+
+interface CustomToken extends JWT {
+    idTokenExpiresAt?: number;
+    id?: string;
+    accessToken?: string;
+    name?: string;
+    email?: string;
+    picture?: string;
+}
 
 const handler = NextAuth({
     
@@ -24,22 +37,34 @@ const handler = NextAuth({
         debug: (code, ...message) => console.debug(code, message),
     },
     callbacks: {
-        async jwt({ token, user, account }) {
-            if (user) {
+        async jwt({ token, user, account }: { token: CustomToken, user: User, account: Account | null }) {
+
+            if (account && user) {
                 token.id = user.id;
+                token.name = user.name || ' '; // Add this line
+                token.email = user.email || ' '; // Add this line
+                token.picture = user.image || ' '; // Add this line
+                token.accessToken = account.id_token;
+                token.idTokenExpiresAt = Math.floor(Date.now() / 1000 + 3600);// 1 hour
             }
             if (account) {
                 console.log(" Inside jwt callback", account);
                 token.accessToken = account.id_token
                 token.idTokenExpiresAt = Math.floor(Date.now() / 1000 + 3600) // 1 hour
             }
-            if (Date.now() >= (token.idTokenExpiresAt ?? 0) * 1000) {
+            if ((Date.now() / 1000) >= (token.idTokenExpiresAt ?? 0)) {
                 return refreshIdToken(token)
             }
+
             return token;
         },
         async session({ session, token }) {
-            session.accessToken = token.accessToken as string;
+            session.accessToken = token.id as string;
+            session.user = {
+                name: token.name,
+                email: token.email,
+                image: token.picture,
+            };
             return session;
         },
     }
@@ -68,6 +93,7 @@ async function refreshIdToken(token: JWT) {
             idTokenExpiresAt: Math.floor(Date.now() / 1000 + 3600)
         }
     } catch (error) {
+        console.log(error)
         return token
     }
 }

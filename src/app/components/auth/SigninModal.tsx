@@ -26,7 +26,7 @@ export default function SignInModal({ isOpen, onClose }) {
     return (
         <div className={`fixed inset-0 bg-black/50 flex items-center justify-center ${isOpen ? '' : 'hidden'}`}>
             <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
-                <h2 className="text-2xl font-display font-bold text-center mb-6">Welcome to SpaceLeet</h2>
+                <h2 className="text-2xl font-display font-bold text-center mb-6 text-black">Welcome to SpaceLeet</h2>
                 <button
                     onClick={() => signIn('google', { callbackUrl: '/session' })}
                     className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full flex items-center justify-center gap-3 hover:scale-105 transition-transform duration-200"
