@@ -25,7 +25,12 @@ export default function MainSession() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "end"
+            });
+        }, 100);
     };
     const [isLoading, setIsLoading] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -326,6 +331,7 @@ export default function MainSession() {
                                     )}
                                     </div>
                             ))}
+                            <div ref={messagesEndRef} />
                         </div>
                     </div>
 
@@ -336,7 +342,7 @@ export default function MainSession() {
                         />
                         <div className="flex gap-4 mt-4 justify-center">
                             <button
-                                className="w-44 px-4 py-2 bg-[#2CBB5D] text-white font-medium rounded-lg hover:bg-[#2CAA5D] transition-all"
+                                className="w-44 px-4 py-2 bg-[#2CBB5D] ref={messagesEndRef}text-white font-medium rounded-lg hover:bg-[#2CAA5D] transition-all"
                                 onClick={handleSubmitPseudocode}
                             >
                                 Submit
