@@ -1,7 +1,7 @@
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface Problem {
-    id: number;
+    id: number | null;
     title: string;
     description: string;
     difficulty: Difficulty;
@@ -11,6 +11,10 @@ export interface Problem {
     asked_by_faang: boolean;
     solved: boolean;
     attempts: number;
+    last_attempt: Date | null;
+    next_review: Date | null;  // When to show again
+    interval: number;  // Days until next review
+
 }
 
 export interface PracticeSession {

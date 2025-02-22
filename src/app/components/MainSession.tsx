@@ -5,20 +5,16 @@ import { useState, useEffect, useRef } from 'react';
 import { ProblemDisplay } from '@/app/components/ProblemDisplay';
 import { PseudocodeEditor } from '@/app/components/PseudocodeEditor';
 import SessionProgress from '@/app/components/SessionProgress';
-import { api } from '@/app/lib/api';
-import { PracticeSession } from '@/app/types';
 import { Problem } from '@/app/types';
 import { useSession, signOut } from 'next-auth/react';
 import { Message } from '@/types';
-import { Menu, Transition } from '@headlessui/react';
+import { Menu } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
-import next from 'next';
+import { Dialog } from '@headlessui/react';
 
 export default function MainSession() {
     const { data: authSession, status } = useSession();
     const [pseudocode, setPseudocode] = useState('');
-    const [analysis, setAnalysis] = useState('');
-    const [iterations, setIterations] = useState(0);
     const NO_OF_PROBLEMS = 10;
     const [currentProblemIndex, setCurrentProblemIndex] = useState(1);
     const [problem, setProblem] = useState<Problem>();
@@ -31,15 +27,48 @@ export default function MainSession() {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+    const [isLoading, setIsLoading] = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+
     useEffect(() => {
         if (status == "authenticated") {
+            if (!authSession) {
+                console.error('authSession is null');
+                return;
+            }
+            const checkOnboarding = async () => {
+                const response = await fetch('/api/redis/', {
+                    headers: {
+                        'Authorization': `Bearer ${authSession?.accessToken}`
+                    }
+                });
+                const { isFirstTime } = await response.json();
+                if (isFirstTime) {
+                    setShowOnboardingModal(true);
+                }
+            };
+            checkOnboarding();
             startNewSession();
         }
-    }, [status]);
+    }, [status, authSession]);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    const [sessionProgress, setSessionProgress] = useState({ completed: 0, remaining: 0 });
+
+    useEffect(() => {
+        const fetchProgress = async () => {
+            const sessionId = localStorage.getItem('leetcode_session_id');
+            const response = await fetch(`/api/session/${sessionId}/sessionProgress`);
+            const progress = await response.json();
+            setSessionProgress(progress);
+        };
+
+        fetchProgress();
+    }, [currentProblemIndex]);
 
     async function loadChatHistory(sessionId: string, problemId: number) {
         console.log('Loading chat history...', problemId);
@@ -107,6 +136,10 @@ export default function MainSession() {
         }
     };
 
+    const handleSolvedClick = async () => {
+        setIsConfirmModalOpen(true);
+    };
+
     const handleNextProblem = async () => {
         const sessionId = localStorage.getItem('leetcode_session_id');
         if (!sessionId) {
@@ -141,21 +174,33 @@ export default function MainSession() {
             const nextProblem = await response.json();
             console.log('Next problem:', nextProblem);
             setProblem(nextProblem.problem);
+            
             await loadChatHistory(sessionId, nextProblem.id);
         }
         catch (error) {
             console.error('Error submitting pseudocode:', error);
         }
+        // Fetch updated progress
+        const progressResponse = await fetch(`/api/session/${sessionId}/sessionProgress`);
+        const progress = await progressResponse.json();
+        setSessionProgress(progress);
     };
 
     const handleSubmitPseudocode = async () => {
+        setIsLoading(true);
         const sessionId = localStorage.getItem('leetcode_session_id');
 
         setMessages(prev => [...prev, {
             type: 'pseudocode',
             content: pseudocode,
             timestamp: Date.now()
-        }]);
+        },
+            {
+                type: 'loading',
+                content: 'Analyzing your solution...',
+                timestamp: Date.now() + 1
+            }
+        ]);
         try {
             console.log('Submitting pseudocode...');
             const problemId = problem?.id;
@@ -174,7 +219,7 @@ export default function MainSession() {
             
             const result = await response.json();
 
-            const chatResponse = await fetch(`/api/session/${sessionId}/chat`, {
+            await fetch(`/api/session/${sessionId}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -189,38 +234,39 @@ export default function MainSession() {
                         },
                         {
                             type: 'analysis',
-                            content: analysis,
-                            timestamp: Date.now()
+                            content: result.analysis,
+                            
+                            timestamp: Date.now() + 1
                         }
                     ],
                     sessionId: sessionId,
                     problemId: problemId,
                 })
             });
-            console.log('Response from chat API:', chatResponse);
-            setAnalysis(result.analysis);
-            setIterations(result.iterations);
-            setMessages(prev => [...prev, {
+            // Replace loading message with analysis
+            setMessages(prev => prev.filter(m => m.type !== 'loading').concat({
                 type: 'analysis',
                 content: result.analysis,
-                timestamp: Date.now()
-            }]);
-            
-
-
+                timestamp: Date.now() + 1
+            }));  
+            setIsLoading(false);
         }
         catch (error) {
             console.error('Error submitting pseudocode:', error);
         }
+        finally {
+            setIsLoading(false);
+        }
     };
 
     return (
+        
         <div className="h-screen flex flex-col bg-[#1A1A1A]">
             {/* Header with User Menu */}
             <nav className="bg-[#282828] h-12 flex items-center justify-between px-4">
                 <SessionProgress
-                    completedProblems={currentProblemIndex}
-                    totalProblems={NO_OF_PROBLEMS}
+                    completedProblems={sessionProgress.completed}
+                    remainingProblems={sessionProgress.remaining}
                     deckName={deckName}
                     problemsByDifficulty={{
                         Easy: 5,
@@ -264,16 +310,21 @@ export default function MainSession() {
                                     className="p-4 rounded-lg bg-[#1E1E1E]"
                                 >
                                     <p className="font-medium text-[#2CBB5D]">
-                                        {message.type === 'pseudocode' ? 'Your Pseudocode:' : 'Analysis:'}
+                                        {message.type === 'pseudocode' ? 'Your Pseudocode:' :
+                                            message.type === 'loading' ? 'Loading...' : 'Analysis:'}
                                     </p>
-                                    {message.type === 'pseudocode' ? (
+                                    {message.type === 'loading' ? (
+                                        <div className="mt-2 text-[#CFD3DC] animate-pulse">
+                                            {message.content}
+                                        </div>
+                                    ) : message.type === 'pseudocode' ? (
                                         <pre className="mt-2 text-[#CFD3DC]">{message.content}</pre>
                                     ) : (
                                         <ReactMarkdown className="mt-2 prose prose-invert max-w-none">
                                             {message.content}
                                         </ReactMarkdown>
                                     )}
-                                </div>
+                                    </div>
                             ))}
                         </div>
                     </div>
@@ -291,17 +342,91 @@ export default function MainSession() {
                                 Submit
                             </button>
                             <button
-                                className="w-44 px-4 py-2 bg-[#3E3E3E] text-[#CFD3DC] font-medium rounded-lg hover:bg-[#4E4E4E] transition-all"
-                                onClick={handleNextProblem}
+                                className="w-44 px-4 py-2 bg-[#6B7280] text-white font-medium rounded-lg hover:bg-[#4B5563] transition-all"
+                                onClick={handleSolvedClick}
                             >
-                                Solved, Next
+                                Mark Solved
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+            <Dialog
+                open={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                className="relative z-50"
+            >
+                <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <Dialog.Panel className="bg-[#282828] rounded-lg p-6 max-w-sm">
+                        <Dialog.Title className="text-lg font-medium text-white mb-4">
+                            Mark Problem as Solved
+                        </Dialog.Title>
+                        <p className="text-[#CFD3DC] mb-6">
+                            Confirm solved status, fetching next problem
+                        </p>
+                        <div className="flex justify-end gap-4">
+                            <button
+                                className="px-4 py-2 bg-[#6B7280] text-white rounded-lg hover:bg-[#4B5563]"
+                                onClick={() => setIsConfirmModalOpen(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-4 py-2 bg-[#2CBB5D] text-white rounded-lg hover:bg-[#2CAA5D]"
+                                onClick={() => {
+                                    handleNextProblem();
+                                    setIsConfirmModalOpen(false);
+                                }}
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </Dialog.Panel>
+                </div>
+            </Dialog>
+            <Dialog
+                open={showOnboardingModal}
+                onClose={() => setShowOnboardingModal(false)}
+                className="relative z-50"
+            >
+                <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <Dialog.Panel className="bg-[#282828] rounded-lg p-6 max-w-2xl w-full">
+                        <Dialog.Title className="text-2xl font-bold text-white mb-4">
+                            Welcome to LeetCode Thinking!
+                        </Dialog.Title>
+                        <div className="space-y-4 text-[#CFD3DC]">
+                            <p>Here is what you can expect:</p>
+                            <p>
+                                Master the art of coding interviews through deliberate practice. Like in real interviews,
+                                you will solve problems without a code runner, focusing on developing robust problem-solving
+                                principles rather than memorizing solutions. This approach builds lasting understanding
+                                and confidence in your interview skills.
+                            </p>
+                            <ul className="list-disc pl-5 space-y-2">
+                                <li>For every problem, Write your pseudocode or regular code. Preferably python</li>
+                                <li>The agent gives feedback on your solution approach</li>
+                                <li>Refine your pseuducode or Python code</li>
+                                <li>Once the agent agrees with your solution mark the problem as solved</li>
+                            </ul>
+                        </div>
+                        <div className="mt-8 flex justify-end">
+                            <button
+                                className="px-6 py-2 bg-[#2CBB5D] text-white rounded-lg hover:bg-[#2CAA5D]"
+                                onClick={() => setShowOnboardingModal(false)}
+                            >
+                                Get Started
+                            </button>
+                        </div>
+                    </Dialog.Panel>
+                </div>
+            </Dialog>
         </div>
 
+        
 
     );
 

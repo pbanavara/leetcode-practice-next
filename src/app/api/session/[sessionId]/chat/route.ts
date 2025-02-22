@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LeetCodeThinkingAgent } from '@/app/lib/services/leetcode';
 import { Message } from '@/app/types/index';
-import * as React from 'react';
 
 const agent = new LeetCodeThinkingAgent();
 interface ChatHistoryRequest {

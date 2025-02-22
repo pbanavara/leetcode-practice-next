@@ -12,7 +12,7 @@ export class LeetCodeThinkingAgent {
         this.client = new Anthropic({
             apikey: process.env.ANTHROPIC_API_KEY,
         });
-        this.redisManager = new RedisManager()
+        this.redisManager = RedisManager.getInstance();
     }
 
     async analyzePseudocode(problem: Problem, pseudocode: string): Promise<string> {
@@ -84,13 +84,12 @@ export class LeetCodeThinkingAgent {
         }
         await this.redisManager.markProblemSolved(sessionId, problemId);
         await this.redisManager.incrementProblemAttempt(sessionId, problemId);
-        
     }
 
     async getCurrentProblem(sessionId: string): Promise<Problem> {
         // First check if session has problems assigned
         console.log("Getting current problem for session:", sessionId);
-        let problems = await this.redisManager.getUserProblems(sessionId);
+        const problems = await this.redisManager.getUserProblems(sessionId);
 
         if (!problems) {
             // Get random problems from Postgres
@@ -106,7 +105,7 @@ export class LeetCodeThinkingAgent {
             await this.redisManager.setUserProblems(sessionId, randomProblems);
             
             // transform random problems into array of Problem objects
-            let dbProblems = randomProblems.map((p: Problem )=> (
+            const dbProblems = randomProblems.map((p: Problem )=> (
                 {
                     id: p.id,
                     title: p.title,
@@ -130,38 +129,38 @@ export class LeetCodeThinkingAgent {
     }
 
     async getNextProblem(sessionId: string): Promise<Problem> {
+        /*
         const cachedProblems = await this.redisManager.getUserProblems(sessionId);
 
         if (cachedProblems === null) {
             throw new Error('No problems found for the user.');
         }
 
-        const unsolvedProblems = cachedProblems.filter(p => !p.solved);
-        if (unsolvedProblems.length > 0) {
-            const currentIndex = cachedProblems.findIndex(p => p.id === unsolvedProblems[0].id);
-            await this.redisManager.setCurrentIndex(sessionId, currentIndex + 1);
-            return unsolvedProblems[0];
+        const currentProblemIndex = await this.redisManager.getCurrentIndex(sessionId);
+
+        const nextProblemIndex = currentProblemIndex + 1;
+        await this.redisManager.setCurrentIndex(sessionId, nextProblemIndex);
+        return cachedProblems[nextProblemIndex];
+        */
+        
+        /*
+        const redis = new Redis(
+            'redis://default:8zYjYy6ySk86q1tP6Tm826KLLqlVIP0C@redis-11035.c281.us-east-1-2.ec2.redns.redis-cloud.com:11035'
+        );
+        const newProblem = await getNextProblem(redis, sessionId);
+        if (newProblem) {
+            return newProblem;
+        } else {
+            throw new Error('No problems found for the user.');
         }
-
-        const hardProblems = cachedProblems.filter(p => p.difficulty === 'Hard');
-        if (hardProblems.length > 0) {
-            const problemId = hardProblems.reduce((prev, curr) =>
-                (curr.attempts || 0) > (prev.attempts || 0) ? curr : prev
-            ).id;
-            const currentIndex = cachedProblems.findIndex(p => p.id === problemId);
-            await this.redisManager.setCurrentIndex(sessionId, currentIndex + 1);
-            return cachedProblems.find(p => p.id === problemId)!;
+        */
+        const newProblem = await this.redisManager.getNextProblem(sessionId);
+        if (!newProblem) {
+            throw new Error('No problems found for the user.');
         }
+        return newProblem;
 
-        const problemId = cachedProblems.reduce((prev, curr) =>
-            (curr.attempts || 0) > (prev.attempts || 0) ? curr : prev
-        ).id;
-        const currentIndex = cachedProblems.findIndex(p => p.id === problemId);
-        await this.redisManager.setCurrentIndex(sessionId, currentIndex + 1);
-
-        return cachedProblems.find(p => p.id === problemId)!;
     }
-
 
     async appendChatHistory(userId: string, sessionId: string, problemId: string, messages: Message[]): Promise<void> {
         console.log("Appending chat history for session:", sessionId);

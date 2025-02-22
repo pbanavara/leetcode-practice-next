@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { LeetCodeThinkingAgent } from '@/app/lib/services/leetcode';
 import { format } from 'date-fns';
-
-const agent = new LeetCodeThinkingAgent();
 
 interface ActiveSession {
     userId: string;

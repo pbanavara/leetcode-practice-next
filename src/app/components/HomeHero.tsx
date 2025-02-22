@@ -12,22 +12,23 @@ export default function HomeHero() {
     const handleStartSession = async () => {
         if (status === 'authenticated') {
             router.push('/session');
+            console.log("Session started", session);
         } else {
             setShowSignIn(true);
         }
     };
-
-    
     
     const [showSignIn, setShowSignIn] = useState(false);
     return (
         <div className="text-center py-24 bg-[#1A1A1A]">
             <div className="max-w-6xl mx-auto px-6">
-                <h1 className="text-7xl font-display font-extrabold mb-2 text-white">
-                    SpaceLeet
+                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
+                    Master LeetCode Through AI-Powered Spaced Repetition
                 </h1>
-                <p className="text-3xl font-semibold mb-12 text-[#CFD3DC]">
-                    Master LeetCode through intelligent tutoring and spaced repetition
+                <p className="mt-6 text-lg leading-8 text-gray-300">
+                    Level up your coding interview skills with our intelligent learning system. Our AI assistant guides you through problems,
+                    provides targeted feedback, and uses spaced repetition to optimize your learning curve - helping you retain solutions longer
+                    and think more systematically.
                 </p>
 
                 <div className="grid md:grid-cols-3 gap-8 mb-16">
@@ -63,7 +64,7 @@ export default function HomeHero() {
                             Our AI tutor breaks down complex concepts, provides strategic hints, and helps you build robust problem-solving skills - just like a real interviewer would.
                         </p>
                         <p className="text-xl text-[#CFD3DC] leading-relaxed">
-                            Combined with spaced repetition, you'll retain knowledge longer and solve problems faster. Making interview prep not just effective, but engaging.
+                            Combined with spaced repetition, you will retain knowledge longer and solve problems faster. Making interview prep not just effective, but engaging.
                         </p>
                     </div>
                 </div>

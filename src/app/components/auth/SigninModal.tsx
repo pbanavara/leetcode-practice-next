@@ -22,7 +22,7 @@ const GoogleIcon = () => (
     </svg>
 );
 
-export default function SignInModal({ isOpen, onClose }) {
+export default function SignInModal({ isOpen}) {
     return (
         <div className={`fixed inset-0 bg-black/50 flex items-center justify-center ${isOpen ? '' : 'hidden'}`}>
             <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
